@@ -2,21 +2,14 @@ import { createContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import jwtDecode from "jwt-decode";
 import axios from "../api/axios";
-import { validToken, getTokens, LOCAL_STORAGE_AUTH_KEY } from "./../utils/auth";
 
 const AuthContext = createContext();
 
 export default AuthContext;
 
 export const AuthProvider = ({ children }) => {
-  const tokens = getTokens();
-  const validTokens = tokens && validToken(tokens.refresh);
-  if (!validTokens) localStorage.removeItem(LOCAL_STORAGE_AUTH_KEY);
-
-  const [authTokens, setAuthTokens] = useState(validTokens ? tokens : null);
-  const [user, setUser] = useState(
-    validTokens ? jwtDecode(tokens.access) : null
-  );
+  const [accessToken, setAccessToken] = useState();
+  const [user, setUser] = useState();
 
   const navigate = useNavigate();
 
@@ -27,15 +20,15 @@ export const AuthProvider = ({ children }) => {
     });
 
     const data = response.data;
-    setAuthTokens(data);
-    setUser(jwtDecode(data.access));
-    localStorage.setItem(LOCAL_STORAGE_AUTH_KEY, JSON.stringify(data));
+    setAccessToken(data?.access);
+    setUser(jwtDecode(data?.access));
   };
 
-  const logout = () => {
-    setAuthTokens(null);
+  const logout = async () => {
+    await axios.post("/ldap/logout/", {}, { withCredentials: true });
+
+    setAccessToken(null);
     setUser(null);
-    localStorage.removeItem(LOCAL_STORAGE_AUTH_KEY);
     navigate("/login", { replace: true });
   };
 
@@ -46,8 +39,8 @@ export const AuthProvider = ({ children }) => {
   const contextData = {
     user,
     isAdmin,
-    authTokens,
-    setAuthTokens,
+    accessToken,
+    setAccessToken,
     setUser,
     login,
     logout,

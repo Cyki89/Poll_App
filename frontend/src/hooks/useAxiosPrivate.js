@@ -5,25 +5,26 @@ import useRefreshToken from "./useRefreshToken";
 import useAuth from "./useAuth";
 
 const useAxiosPrivate = () => {
-  const { authTokens, logout } = useAuth();
+  const { accessToken, logout } = useAuth();
   const refreshAccess = useRefreshToken();
 
   useEffect(() => {
     const requestIntercept = axiosPrivate.interceptors.request.use(
       async (request) => {
         if (!request.headers["Authorization"]) {
-          request.headers["Authorization"] = `JWT ${authTokens?.access}`;
+          request.headers["Authorization"] = `JWT ${accessToken}`;
         }
-        const { access, refresh } = authTokens;
+        console.log("Valid Token", validToken(accessToken));
+        if (validToken(accessToken)) return request;
 
-        if (!validToken(refresh)) return logout();
-
-        if (validToken(access)) return request;
-
-        const newAccess = await refreshAccess();
-
-        request.headers.Authorization = `JWT ${newAccess}`;
-        return request;
+        try {
+          const newAccess = await refreshAccess();
+          request.headers.Authorization = `JWT ${newAccess}`;
+          return request;
+        } catch (error) {
+          console.log("logout");
+          return logout();
+        }
       },
       (error) => Promise.reject(error)
     );
@@ -31,7 +32,7 @@ const useAxiosPrivate = () => {
     return () => {
       axiosPrivate.interceptors.request.eject(requestIntercept);
     };
-  }, [authTokens, refreshAccess, logout]);
+  }, [accessToken, refreshAccess, logout]);
 
   return axiosPrivate;
 };

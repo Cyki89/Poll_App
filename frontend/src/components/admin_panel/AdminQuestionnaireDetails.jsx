@@ -81,7 +81,6 @@ const AdminQuestionnaireDetails = () => {
   }, [data]);
 
   useEffect(() => {
-    console.log(response);
     if (!loading && response && !error) setData(response);
     if (!loading && response && !error && submited) {
       showSuccessNotification();

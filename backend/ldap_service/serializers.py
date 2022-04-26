@@ -2,14 +2,15 @@ from django.db import transaction
 from django.contrib.auth.models import User, Group
 from django.forms import model_to_dict
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.exceptions import InvalidToken
 from djoser.serializers import (
     UserCreateSerializer,
 )
 from ad_service.models import ADUser
 from ad_service.serializers import ADUserSerializer
 
-# TODO Remove if unused and move valide logic to other place
+
 class LdapUserSerializer(UserCreateSerializer):
     password = serializers.CharField(style={"input_type": "password"}, write_only=True)
 
@@ -40,7 +41,6 @@ class LdapUserSerializer(UserCreateSerializer):
                 user.groups.add(group)
 
         return user
-
 
 
 class LdapTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -101,3 +101,13 @@ class LdapTokenObtainPairSerializer(TokenObtainPairSerializer):
             if ad_group not in user_group_names:
                 group, _ = Group.objects.get_or_create(name=ad_group)
                 user.groups.add(group)
+
+
+class LdapCookieRefreshSerializer(TokenRefreshSerializer):
+    refresh = None
+    def validate(self, attrs):
+        attrs['refresh'] = self.context['request'].COOKIES.get('refresh_token')
+        if attrs['refresh']:
+            return super().validate(attrs)
+        else:
+            raise InvalidToken('No valid token found in cookie \'refresh_token\'')
